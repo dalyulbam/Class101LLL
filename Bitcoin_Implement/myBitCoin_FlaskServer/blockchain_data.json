@@ -1,0 +1,68 @@
+{
+  "chain": [
+    {
+      "index": 1,
+      "timestamp": "2025-06-01 16:11:59.367414",
+      "data": "genesis block",
+      "proof": 1,
+      "previous_hash": "0"
+    },
+    {
+      "index": 2,
+      "timestamp": "2025-06-01 16:13:33.736599",
+      "data": "{\"transactions\": [{\"tx_id\": \"coinbase_2\", \"inputs\": [], \"outputs\": [{\"amount\": 10.0, \"address\": \"1gVtPEUkQVasqY7ASaGs4vQwB5DDyqTe7\"}]}]}",
+      "proof": 35211,
+      "previous_hash": "2ee470e4f156e9a78facc5d75039d1626a9dfbd7577d40b2d32a3bd0ae5d3061"
+    },
+    {
+      "index": 3,
+      "timestamp": "2025-06-01 16:13:42.040838",
+      "data": "{\"transactions\": [{\"tx_id\": \"8698c983badff42f2a452a810be23b6e2bfa533ce266ee238770c9692efa3556\", \"inputs\": [{\"prev_tx_id\": \"coinbase_2\", \"output_index\": 0, \"signature\": \"2e68263381135d478098a54de1f11373883407ef6ca4bf2d231ac40b7cfc4981fb7de9e8fa27d5455c868794576b32c41112f88486b1e57bf281aae573a9beb5\", \"public_key\": \"04311ba937a3b216a402c68ae9bd07c5b0d7bf023a3017162c55a8b8ad178d29a1d259e21dc6dd506dad4ef3fa3fe501466b33a1b6d1246e3738d05704b293c63a\"}], \"outputs\": [{\"amount\": 3.0, \"address\": \"1B29KZDhviDLHkwEsAgE4qEKbccs4SKFCS\"}, {\"amount\": 7.0, \"address\": \"1gVtPEUkQVasqY7ASaGs4vQwB5DDyqTe7\"}]}, {\"tx_id\": \"coinbase_3\", \"inputs\": [], \"outputs\": [{\"amount\": 10.0, \"address\": \"16uLh1GWHTKU7A16fZB8GpijMEHbfpuBLi\"}]}]}",
+      "proof": 65316,
+      "previous_hash": "7f699a45d7d1e30582ad1dbcb97f1e024063cbe7f71f2683e86e6aab31b40210"
+    },
+    {
+      "index": 4,
+      "timestamp": "2025-06-01 21:02:30.360011",
+      "data": "{\"transactions\": [{\"tx_id\": \"coinbase_4\", \"inputs\": [], \"outputs\": [{\"amount\": 10.0, \"address\": \"1K5oYcDzAAZEvMz71Taktdgw1ERATUodi\"}]}]}",
+      "proof": 3031,
+      "previous_hash": "02e80bcf043c4c9e092b15a3225ddd7d1bdaf2d348313febb3a0e39a265e0984"
+    },
+    {
+      "index": 5,
+      "timestamp": "2025-06-01 21:02:36.330222",
+      "data": "{\"transactions\": [{\"tx_id\": \"coinbase_5\", \"inputs\": [], \"outputs\": [{\"amount\": 10.0, \"address\": \"1K5oYcDzAAZEvMz71Taktdgw1ERATUodi\"}]}]}",
+      "proof": 32330,
+      "previous_hash": "aec3d4d5a541ced881a34766a954bb813395a3f121c55b57abbd00329de588ca"
+    },
+    {
+      "index": 6,
+      "timestamp": "2025-06-01 21:02:38.719766",
+      "data": "{\"transactions\": [{\"tx_id\": \"coinbase_6\", \"inputs\": [], \"outputs\": [{\"amount\": 10.0, \"address\": \"1K5oYcDzAAZEvMz71Taktdgw1ERATUodi\"}]}]}",
+      "proof": 1517,
+      "previous_hash": "c8073bd15684e86aca72889302acad8c5e10fd95d53101654ee41ec2aa01e29d"
+    },
+    {
+      "index": 7,
+      "timestamp": "2025-06-01 21:02:40.750884",
+      "data": "{\"transactions\": [{\"tx_id\": \"coinbase_7\", \"inputs\": [], \"outputs\": [{\"amount\": 10.0, \"address\": \"1K5oYcDzAAZEvMz71Taktdgw1ERATUodi\"}]}]}",
+      "proof": 1287,
+      "previous_hash": "14a0cca30118757c8b266e9c53402cd1f19788576c78ca1b4d9f06f7701bb7a4"
+    },
+    {
+      "index": 8,
+      "timestamp": "2025-06-01 21:02:50.618096",
+      "data": "{\"transactions\": [{\"tx_id\": \"coinbase_8\", \"inputs\": [], \"outputs\": [{\"amount\": 10.0, \"address\": \"1K5oYcDzAAZEvMz71Taktdgw1ERATUodi\"}]}]}",
+      "proof": 27912,
+      "previous_hash": "c4d8b14ec56ddec86f456c7db9dd3bef44c54dfd00dfa614be8457f75274e994"
+    }
+  ],
+  "utxos": {
+    "genesis:0": {
+      "tx_id": "genesis",
+      "output_index": 0,
+      "amount": 1000.0,
+      "address": "1EpFEefLQHRX6wPgASAW1Rx2tCAdHKM9DB"
+    }
+  }
+}

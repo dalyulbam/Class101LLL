@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin UTXO 블록체인</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .nav {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .nav-item {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: #007bff;
+            color: white;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+        
+        .result {
+            background: #e8f5e8;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            background: #ffe8e8;
+            border: 1px solid #f44336;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            opacity: 0.9;
+        }
+        
+        .wallet-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .address {
+            font-family: monospace;
+            background: #f1f3f4;
+            padding: 5px;
+            border-radius: 3px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🪙 Bitcoin UTXO 블록체인</h1>
+            <p>UTXO 기반 비트코인 구현 및 테스트</p>
+        </div>
+        
+        <div class="nav">
+            <button class="nav-item active" onclick="showSection('dashboard')">대시보드</button>
+            <button class="nav-item" onclick="showSection('wallet')">지갑 관리</button>
+            <button class="nav-item" onclick="showSection('transaction')">트랜잭션</button>
+            <button class="nav-item" onclick="showSection('mining')">채굴</button>
+            <button class="nav-item" onclick="showSection('blockchain')">블록체인</button>
+        </div>
+        
+        <div class="content">
+            <!-- 대시보드 섹션 -->
+            <div id="dashboard" class="section active">
+                <h2>📊 시스템 현황</h2>
+                <div class="grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalBlocks">-</div>
+                        <div class="stat-label">총 블록 수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalSupply">-</div>
+                        <div class="stat-label">총 공급량 (BTC)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalUTXOs">-</div>
+                        <div class="stat-label">총 UTXO 수</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingTxs">-</div>
+                        <div class="stat-label">대기 중인 트랜잭션</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="numUsers">-</div>
+                        <div class="stat-label">총 유저수</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <button class="btn" onclick="loadStats()">📈 통계 새로고침</button>
+                    <button class="btn btn-success" onclick="loadPendingTransactions()">⏳ 대기 트랜잭션 보기</button>
+                </div>
+                
+                <div id="dashboardResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <!-- 지갑 관리 섹션 -->
+            <div id="wallet" class="section">
+                <h2>👛 지갑 관리</h2>
+                
+                <div class="card">
+                    <h3>새 지갑 생성</h3>
+                    <button class="btn" onclick="createWallet()">🆕 새 지갑 생성</button>
+                </div>
+                
+                <div class="card">
+                    <h3>잔액 조회</h3>
+                    <div class="form-group">
+                        <label>지갑 주소:</label>
+                        <input type="text" id="balanceAddress" placeholder="비트코인 주소 입력">
+                    </div>
+                    <button class="btn" onclick="checkBalance()">💰 잔액 확인</button>
+                    <button class="btn btn-warning" onclick="checkUTXOs()">🔍 UTXO 조회</button>
+                </div>
+                
+                <div id="walletResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <!-- 트랜잭션 섹션 -->
+            <div id="transaction" class="section">
+                <h2>💸 트랜잭션</h2>
+                
+                <div class="card">
+                    <h3>트랜잭션 생성 및 전송</h3>
+                    <div class="form-group">
+                        <label>송신자 주소:</label>
+                        <input type="text" id="senderAddress" placeholder="송신자 비트코인 주소">
+                    </div>
+                    <div class="form-group">
+                        <label>수신자 주소:</label>
+                        <input type="text" id="receiverAddress" placeholder="수신자 비트코인 주소">
+                    </div>
+                    <div class="form-group">
+                        <label>전송 금액 (BTC):</label>
+                        <input type="number" id="amount" step="0.01" placeholder="0.00">
+                    </div>
+                    <button class="btn" onclick="createTransaction()">📝 트랜잭션 생성</button>
+                    <button class="btn btn-success" onclick="sendTransaction()">🚀 트랜잭션 전송</button>
+                </div>
+                
+                <div id="transactionResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <!-- 채굴 섹션 -->
+            <div id="mining" class="section">
+                <h2>⛏️ 블록 채굴</h2>
+                
+                <div class="card">
+                    <h3>블록 채굴</h3>
+                    <div class="form-group">
+                        <label>채굴자 주소 (보상 받을 주소):</label>
+                        <input type="text" id="minerAddress" placeholder="채굴자 비트코인 주소">
+                    </div>
+                    <button class="btn btn-warning" onclick="mineBlock()">⛏️ 블록 채굴 시작</button>
+                    <p style="margin-top: 10px; color: #666;">
+                        💡 채굴 시 10 BTC의 보상을 받습니다. 대기 중인 트랜잭션들이 블록에 포함됩니다.
+                    </p>
+                </div>
+                
+                <div id="miningResult" class="result" style="display: none;"></div>
+            </div>
+            
+            <!-- 블록체인 섹션 -->
+            <div id="blockchain" class="section">
+                <h2>🔗 블록체인 탐색</h2>
+                
+                <div class="card">
+                    <h3>블록체인 조회</h3>
+                    <button class="btn" onclick="viewBlockchain()">🔍 전체 블록체인 보기</button>
+                    <button class="btn btn-warning" onclick="viewLastBlock()">📦 최신 블록 보기</button>
+                </div>
+                
+                <div class="card">
+                    <h3>특정 블록 조회</h3>
+                    <div class="form-group">
+                        <label>블록 번호:</label>
+                        <input type="number" id="blockIndex" min="1" placeholder="블록 번호 입력">
+                    </div>
+                    <button class="btn" onclick="viewSpecificBlock()">🔍 블록 조회</button>
+                </div>
+                
+                <div id="blockchainResult" class="result" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // 섹션 전환
+        function showSection(sectionName) {
+            // 모든 섹션 숨기기
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // 모든 네비게이션 아이템 비활성화
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 선택된 섹션 보이기
+            document.getElementById(sectionName).classList.add('active');
+            
+            // 선택된 네비게이션 아이템 활성화
+            event.target.classList.add('active');
+        }
+        
+        // API 호출 헬퍼 함수
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                const result = await response.json();
+                
+                return result;
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // 결과 표시 헬퍼 함수
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = isError ? 'result error' : 'result';
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+        
+        // 지갑 생성
+        async function createWallet() {
+            const result = await apiCall('/wallet/create', 'POST');
+            showResult('walletResult', result, !result.success);
+        }
+        
+        // 잔액 확인
+        async function checkBalance() {
+            const address = document.getElementById('balanceAddress').value;
+            if (!address) {
+                alert('주소를 입력해주세요.');
+                return;
+            }
+            
+            const result = await apiCall(`/wallet/${address}/balance`);
+            showResult('walletResult', result, !result.success);
+        }
+        
+        // UTXO 조회
+        async function checkUTXOs() {
+            const address = document.getElementById('balanceAddress').value;
+            if (!address) {
+                alert('주소를 입력해주세요.');
+                return;
+            }
+            
+            const result = await apiCall(`/wallet/${address}/utxos`);
+            showResult('walletResult', result, !result.success);
+        }
+        
+        // 트랜잭션 생성
+        async function createTransaction() {
+            const sender = document.getElementById('senderAddress').value;
+            const receiver = document.getElementById('receiverAddress').value;
+            const amount = document.getElementById('amount').value;
+            
+            if (!sender || !receiver || !amount) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+            
+            const result = await apiCall('/transaction/create', 'POST', {
+                sender_address: sender,
+                receiver_address: receiver,
+                amount: parseFloat(amount)
+            });
+            
+            showResult('transactionResult', result, !result.success);
+        }
+        
+        // 트랜잭션 전송
+        async function sendTransaction() {
+            const sender = document.getElementById('senderAddress').value;
+            const receiver = document.getElementById('receiverAddress').value;
+            const amount = document.getElementById('amount').value;
+            
+            if (!sender || !receiver || !amount) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+            
+            const result = await apiCall('/transaction/send', 'POST', {
+                sender_address: sender,
+                receiver_address: receiver,
+                amount: parseFloat(amount)
+            });
+            
+            showResult('transactionResult', result, !result.success);
+        }
+        
+        // 블록 채굴
+        async function mineBlock() {
+            const minerAddress = document.getElementById('minerAddress').value;
+            if (!minerAddress) {
+                alert('채굴자 주소를 입력해주세요.');
+                return;
+            }
+            
+            // 채굴 중 메시지 표시
+            showResult('miningResult', { message: '채굴 중... 잠시만 기다려주세요.' });
+            
+            const result = await apiCall('/mine', 'POST', {
+                miner_address: minerAddress
+            });
+            
+            showResult('miningResult', result, !result.success);
+        }
+        
+        // 블록체인 조회
+        async function viewBlockchain() {
+            const result = await apiCall('/blockchain');
+            showResult('blockchainResult', result, !result.success);
+        }
+        
+        // 최신 블록 조회
+        async function viewLastBlock() {
+            const result = await apiCall('/blockchain');
+            if (result.success && result.data.chain.length > 0) {
+                const lastBlock = result.data.chain[result.data.chain.length - 1];
+                showResult('blockchainResult', { success: true, data: { block: lastBlock } });
+            } else {
+                showResult('blockchainResult', { success: false, error: 'No blocks found' }, true);
+            }
+        }
+        
+        // 특정 블록 조회
+        async function viewSpecificBlock() {
+            const index = document.getElementById('blockIndex').value;
+            if (!index) {
+                alert('블록 번호를 입력해주세요.');
+                return;
+            }
+            
+            const result = await apiCall(`/blockchain/block/${index}`);
+            showResult('blockchainResult', result, !result.success);
+        }
+        
+        // 통계 로드
+        async function loadStats() {
+            const result = await apiCall('/stats');
+            if (result.success) {
+                document.getElementById('totalBlocks').textContent = result.data.total_blocks;
+                document.getElementById('totalSupply').textContent = result.data.total_supply.toFixed(2);
+                document.getElementById('totalUTXOs').textContent = result.data.total_utxos;
+                document.getElementById('pendingTxs').textContent = result.data.pending_transactions;
+            }
+            showResult('dashboardResult', result, !result.success);
+        }
+        
+        // 대기 트랜잭션 조회
+        async function loadPendingTransactions() {
+            const result = await apiCall('/pending-transactions');
+            showResult('dashboardResult', result, !result.success);
+        }
+        
+        // 페이지 로드 시 통계 로드
+        window.onload = function() {
+            loadStats();
+        };
+    </script>
+</body>
+</html>

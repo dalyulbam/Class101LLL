@@ -1,356 +1,502 @@
-# Flask 
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, request, jsonify, render_template_string, redirect, url_for, session, flash
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
+import json
+import os
+from typing import Dict, List, Optional
+from functools import wraps
+
+# Bitcoin 클래스들 import (위에서 작성한 코드)
+from bitcoin_utxo import (
+    Wallet, Transaction, Blockchain, UTXO, 
+    TransactionInput, TransactionOutput, UTXOPool
+)
+
 app = Flask(__name__)
-CORS(app)  # CORS 허용
+CORS(app)
 
-##################################################################################
-###################################### MYSQL #####################################
-##################################################################################
+# 전역 블록체인 인스턴스
+blockchain = Blockchain()
 
-# MySQL 
-import os  
-import mysql.connector 
-from dotenv import load_dotenv  # python-dotenv 패키지에서 함수 가져오기
-load_dotenv()
+# 지갑 저장소 (실제 운영에서는 데이터베이스 사용)
+wallets: Dict[str, Wallet] = {}
 
-
-def db_connect():
-    return mysql.connector.connect(
-        host = os.environ.get('DB_HOST'),
-        user= os.environ.get('DB_USER'),
-        port = 3306,
-        passwd= os.environ.get('DB_PASSWORD'),
-        database = os.environ.get('DB_NAME'),
-        # ssl_ca='./DigiCertGlobalRootCA.crt.pem',
-    )
-
-##################################################################################
-################################# Block Chain ####################################
-##################################################################################
+# 데이터 영속성을 위한 파일 경로
+BLOCKCHAIN_FILE = "blockchain_data.json"
+WALLETS_FILE = "wallets_data.json"
+USERS_FILE = "users.json"
 
 
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route('/login')
-def login():
-    return render_template("login.html")
-
-@app.route('/setNickname')
-def set_nickname():
-    return render_template("login_put_name.html")
-
-@app.route('/explain')
-def explain_game():
-    return render_template("explain.html")
-
-@app.route('/game')
-def open_game():
-    return render_template("game.html")
-
-@app.route('/wallet', methods=['POST'])
-def create_keys():
-    wallet.create_keys()
-    if wallet.save_keys():
-        global blockchain
-        blockchain = Blockchain(wallet.public_key, port)
-        response = {
-            'public_key': wallet.public_key,
-            'private_key': wallet.private_key,
-            'funds': blockchain.get_balance()
-        }
-        return jsonify(response), 201
-
-@auth_bp.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('main_bp.index'))
-    form = LoginForm()
-    if form.validate_on_submit():
+def load_users():
+    """사용자 데이터 로드"""
+    if os.path.exists(USERS_FILE):
         try:
-            user = User(passphrase=form.passphrase.data)
-            login_user(user)
-            return redirect(url_for('main_bp.index'))
-        except Exception as err:
-            flash(err)
-            return render_template('login.html', form=form)
-    return render_template('login.html', form=form)
+            with open(USERS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Failed to load users data: {e}")
+            return []
+    return []
 
-@app.route('/transaction', methods=['POST'])
-def add_transaction():
-    if wallet.public_key is None:
-        return jsonify({'message': 'No wallet set up.'}), 400
-    values = request.get_json()
-    if not values or 'recipient' not in values or 'amount' not in values:
-        return jsonify({'message': 'Required data is missing.'}), 400
-    recipient = values['recipient']
-    amount = values['amount']
-    signature = wallet.sign_transaction(wallet.public_key, recipient, amount)
-    success = blockchain.add_transaction(recipient, wallet.public_key, signature, amount)
-    if success:
-        response = {
-            'message': 'Successfully added transaction.',
-            'transaction': {
-                'sender': wallet.public_key,
-                'recipient': recipient,
-                'amount': amount,
-                'signature': signature
-            },
-            'funds': blockchain.get_balance()
-        }
-        return jsonify(response), 201
-    
-#For Game Generation 
-@app.route('/randomHuman', methods=['GET'])
-def get_rnd_human_data():
-    mydbConnection = db_connect()
-    cursor = mydbConnection.cursor()
-    # 1st Execution 
-    cursor.execute(f"SELECT COUNT(*) FROM {HUMAN_TABLE}")     
-    rnd_results_res = cursor.fetchall()
-    rnd_results = rnd_results_res[0][0] # random index 
-    # 2nd Execution 
-    cursor.execute(f"SELECT * FROM {HUMAN_TABLE} LIMIT 1 OFFSET {makeRandomIdx(rnd_results)}")
-    results = cursor.fetchall()    
-    print(results)
-    # Finish 
-    cursor.close()
-    mydbConnection.close()
-    return jsonify(results)
-
-#For Game Generation 
-@app.route('/randomEstateDataInRange', methods=['POST'])
-def get_selective_estate_data01():
-
-    results = []; same_region = True; selected_multiple_region = []
-
-    def is_same_address(results):
-        if results[0][0].strip() == results[1][0].strip(): return True; 
-        else : return False;  
-
-    def is_good_response(results):
-        return not results or len(results) != 2 or is_same_address(results)
-
-    try: 
-        human_info = request.json
-        #### Region Query #### 
-        hope_area_split = human_info[0][0].split(" ")
-        work_place = human_info[0][2]
-        region_list = [reg_unit.strip() for reg_unit in hope_area_split if reg_unit.strip()]
-        same_region, selected_multiple_region = check_multiple_territorial(bjd_df, region_list[-1], work_place)
-        region_condition = regionName2condition(region_list)
-        
-        #### Price Query #### 
-        wage = int(human_info[0][3])
-        lower_value, upper_value = set_lower_upper_value_from_wage(region_list, wage)
-        price_condition = f"price between {lower_value} AND {upper_value}"
-        time_condition = f"dealdate between '2024-01-01' AND '2024-12-31'" # 2024년
-
-        #### Cursor1 #### 
-        mydbConnection = db_connect() 
-        results = execute_adjustedCursor_with_condition( 
-            reg_cond= region_condition, 
-            price_cond= price_condition, 
-            time_cond = time_condition,
-            is_same_region= same_region,
-            price_policy= True, 
-            time_policy= True,
-            table = ESTATE_TABLE, 
-            selected_multiple_region= selected_multiple_region
-        )
-
-        #### Cursor2 #### 
-        if is_good_response(results): 
-            print("No boundary in it 1")
-            price_condition = f"price between {lower_value * 0.65} and {upper_value * 1.5}"
-            results = execute_adjustedCursor_with_condition(
-                reg_cond= region_condition, 
-                price_cond= price_condition,
-                time_cond = time_condition, 
-                is_same_region= same_region,
-                table = ESTATE_TABLE, 
-                price_policy= True, 
-                time_policy= True,
-                selected_multiple_region= selected_multiple_region
-            )            
-
-        #### Cursor3 #### 
-        if is_good_response(results): 
-            print("No boundary in it 2")
-            price_condition = f"price between {lower_value * 0.3} and {upper_value * 2.0}"
-            results = execute_adjustedCursor_with_condition(
-                reg_cond= region_condition, 
-                price_cond= price_condition, 
-                time_cond = time_condition,
-                is_same_region= same_region,
-                table = ESTATE_TABLE, 
-                price_policy= True, 
-                time_policy= True,
-                selected_multiple_region= selected_multiple_region
-            )            
-
-        #### Cursor4 #### 
-        if is_good_response(results): 
-            print("No boundary in it 3")
-            results = execute_adjustedCursor_with_condition(
-                reg_cond= region_condition, 
-                price_cond= price_condition, 
-                time_cond = time_condition,
-                is_same_region= same_region,
-                table = ESTATE_TABLE, 
-                price_policy= False, 
-                time_policy= True,
-                selected_multiple_region= selected_multiple_region
-            )            
-
-        #### Final #### 
-        mydbConnection.close()
-    except Exception as err: 
-        print(err)
-    return jsonify(results)
-
-
-#For Game Generation 
-@app.route('/massiveRandomEstateDataInRange/<path:req_sample_num>', methods=['POST'])
-def get_massive_selective_estate_data02(req_sample_num):
+def save_users(users):
+    """사용자 데이터 저장"""
     try:
-        req_sample_num = int(req_sample_num)  # Safely convert to integer
-    except Exception as err:
-        return [{"Error":err}]
+        with open(USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(users, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Failed to save users data: {e}")
 
-    results = []; same_region = True; selected_multiple_region = []
+def login_required(f):
+    """로그인 필요 데코레이터"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-    def is_same_address(results):
-        if results[0][0].strip() == results[1][0].strip(): return True; 
-        else : return False;  
+def load_data():
+    """서버 시작 시 데이터 로드"""
+    global blockchain, wallets
+    
+    # 블록체인 데이터 로드
+    if os.path.exists(BLOCKCHAIN_FILE):
+        try:
+            with open(BLOCKCHAIN_FILE, 'r') as f:
+                data = json.load(f)
+                blockchain.chain = data.get('chain', [])
+                # UTXO 풀 재구성 (실제로는 더 복잡한 로직 필요)
+        except Exception as e:
+            print(f"Failed to load blockchain data: {e}")
+    
+    # 지갑 데이터 로드
+    if os.path.exists(WALLETS_FILE):
+        try:
+            with open(WALLETS_FILE, 'r') as f:
+                wallet_data = json.load(f)
+                for address, private_key_hex in wallet_data.items():
+                    wallet = Wallet()
+                    wallet.private_key = bytes.fromhex(private_key_hex)
+                    wallet.public_key = wallet._generate_public_key(wallet.private_key)
+                    wallet.address = wallet._generate_address(wallet.public_key)
+                    wallets[address] = wallet
+        except Exception as e:
+            print(f"Failed to load wallet data: {e}")
 
-    def is_good_response(results):
-        return not results or len(results) != 2 or is_same_address(results)
-
-    try: 
-        human_info = request.json
-        #### Region Query #### 
-        hope_area_split = human_info[0][0].split(" ")
-        work_place = human_info[0][2]
-        region_list = [reg_unit.strip() for reg_unit in hope_area_split if reg_unit.strip()]
-        same_region, selected_multiple_region = check_all_territorial_nearby(bjd_df, region_list[-1], work_place, sample_size = req_sample_num)
-        region_condition = regionName2condition(region_list)
+def save_data():
+    """데이터 저장"""
+    try:
+        # 블록체인 데이터 저장
+        with open(BLOCKCHAIN_FILE, 'w') as f:
+            json.dump({
+                'chain': blockchain.chain,
+                'utxos': {k: v.to_dict() for k, v in blockchain.utxo_pool.utxos.items()}
+            }, f, indent=2)
         
-        #### Price Query #### 
-        wage = int(human_info[0][3])
-        lower_value, upper_value = set_lower_upper_value_from_wage(region_list, wage)
-        price_condition = f"(price between {lower_value} and {upper_value})"
-        time_condition = f"(dealdate between '2024-01-01' and '2024-12-31')" # 2024년
+        # 지갑 데이터 저장
+        wallet_data = {address: wallet.get_private_key_hex() 
+                      for address, wallet in wallets.items()}
+        with open(WALLETS_FILE, 'w') as f:
+            json.dump(wallet_data, f, indent=2)
+    except Exception as e:
+        print(f"Failed to save data: {e}")
 
-        #### Cursor1 #### 
-        mydbConnection = db_connect() 
-        results = massive_execute_with_condition( 
-            reg_cond= region_condition, 
-            price_cond= price_condition, 
-            time_cond = time_condition,
-            is_same_region= same_region,
-            price_policy= True, 
-            time_policy= True,
-            table = ESTATE_TABLE, 
-            selected_multiple_region= selected_multiple_region, 
-            num_of_asset = req_sample_num
+@app.route('/')
+def login():
+    """로그인 페이지"""
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
+    
+    return render_template_string("login.html")
+
+@app.route('/join')
+def join():
+    """회원가입 페이지"""
+    return render_template_string("join.html")
+
+
+@app.route('/authenticate', methods=['POST'])
+def authenticate():
+    """로그인 처리"""
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if not username or not password:
+        flash('사용자명과 비밀번호를 모두 입력해주세요.')
+        return redirect(url_for('login'))
+    
+    # 사용자 데이터 로드
+    users = load_users()
+    
+    # 사용자 찾기 및 비밀번호 확인
+    for user in users:
+        if user['username'] == username:
+            if check_password_hash(user['hashed_password'], password):
+                session['user'] = username
+                return redirect(url_for('dashboard'))
+            else:
+                flash('비밀번호가 올바르지 않습니다.')
+                return redirect(url_for('login'))
+    
+    flash('존재하지 않는 사용자입니다.')
+    return redirect(url_for('login'))
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    """회원가입 처리"""
+    username = request.form.get('username')
+    password = request.form.get('password')
+    confirm_password = request.form.get('confirm_password')
+    
+    # 입력 검증
+    if not username or not password or not confirm_password:
+        flash('모든 필드를 입력해주세요.')
+        return redirect(url_for('join'))
+    
+    if len(username) < 3:
+        flash('사용자명은 3자 이상이어야 합니다.')
+        return redirect(url_for('join'))
+    
+    if len(password) < 6:
+        flash('비밀번호는 6자 이상이어야 합니다.')
+        return redirect(url_for('join'))
+    
+    if password != confirm_password:
+        flash('비밀번호가 일치하지 않습니다.')
+        return redirect(url_for('join'))
+    
+    # 사용자 데이터 로드
+    users = load_users()
+    
+    # 중복 사용자 확인
+    for user in users:
+        if user['username'] == username:
+            flash('이미 존재하는 사용자명입니다.')
+            return redirect(url_for('join'))
+    
+    # 새 사용자 추가
+    hashed_password = generate_password_hash(password)
+    new_user = {
+        'username': username,
+        'hashed_password': hashed_password
+    }
+    
+    users.append(new_user)
+    save_users(users)
+    
+    # 세션 설정하고 대시보드로 이동
+    session['user'] = username
+    return redirect(url_for('dashboard'))
+
+def logout():
+    """로그아웃"""
+    session.pop('user', None)
+    return redirect(url_for('login'))
+
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template_string("dashboard.html")
+
+@app.route('/api/wallet/create', methods=['POST'])
+def create_wallet():
+    """새 지갑 생성"""
+    try:
+        wallet = Wallet()
+        address = wallet.get_address()
+        wallets[address] = wallet
+        
+        save_data()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'address': address,
+                'public_key': wallet.get_public_key_hex(),
+                'private_key': wallet.get_private_key_hex()  # 주의: 실제로는 보안상 반환하지 않음
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/wallet/<address>/balance', methods=['GET'])
+def get_balance(address):
+    """지갑 잔액 조회"""
+    try:
+        balance = blockchain.get_balance(address)
+        utxos = blockchain.utxo_pool.get_utxos_by_address(address)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'address': address,
+                'balance': balance,
+                'utxo_count': len(utxos)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/wallet/<address>/utxos', methods=['GET'])
+def get_utxos(address):
+    """지갑의 UTXO 목록 조회"""
+    try:
+        utxos = blockchain.utxo_pool.get_utxos_by_address(address)
+        utxo_list = [utxo.to_dict() for utxo in utxos]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'address': address,
+                'utxos': utxo_list,
+                'total_amount': sum(utxo.amount for utxo in utxos)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/transaction/create', methods=['POST'])
+def create_transaction():
+    """트랜잭션 생성"""
+    try:
+        data = request.get_json()
+        sender_address = data.get('sender_address')
+        receiver_address = data.get('receiver_address')
+        amount = float(data.get('amount'))
+        
+        # 송신자 지갑 확인
+        if sender_address not in wallets:
+            return jsonify({
+                'success': False, 
+                'error': 'Sender wallet not found'
+            }), 400
+        
+        sender_wallet = wallets[sender_address]
+        
+        # 트랜잭션 생성
+        transaction = blockchain.create_transaction(
+            sender_address, receiver_address, amount, sender_wallet
         )
+        
+        if not transaction:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to create transaction (insufficient funds)'
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'transaction': transaction.to_dict(),
+                'message': 'Transaction created successfully'
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-        #### Cursor2 #### 
-        if is_good_response(results): 
-            print("No boundary in it 1")
-            price_condition = f"price between {lower_value * 0.65} and {upper_value * 1.5}"
-            results = massive_execute_with_condition(
-                reg_cond= region_condition, 
-                price_cond= price_condition, 
-                time_cond = time_condition,
-                is_same_region= same_region,
-                table = ESTATE_TABLE, 
-                price_policy= True, 
-                time_policy= True,
-                selected_multiple_region= selected_multiple_region,
-                num_of_asset = req_sample_num
-            )            
+@app.route('/api/transaction/send', methods=['POST'])
+def send_transaction():
+    """트랜잭션 전송 (블록체인에 추가)"""
+    try:
+        data = request.get_json()
+        sender_address = data.get('sender_address')
+        receiver_address = data.get('receiver_address')
+        amount = float(data.get('amount'))
+        
+        # 송신자 지갑 확인
+        if sender_address not in wallets:
+            return jsonify({
+                'success': False,
+                'error': 'Sender wallet not found'
+            }), 400
+        
+        sender_wallet = wallets[sender_address]
+        
+        # 트랜잭션 생성
+        transaction = blockchain.create_transaction(
+            sender_address, receiver_address, amount, sender_wallet
+        )
+        
+        if not transaction:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to create transaction'
+            }), 400
+        
+        # 트랜잭션을 대기 목록에 추가
+        if blockchain.add_transaction(transaction):
+            save_data()
+            return jsonify({
+                'success': True,
+                'data': {
+                    'transaction_id': transaction.tx_id,
+                    'message': 'Transaction added to pending pool'
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Transaction validation failed'
+            }), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-        #### Cursor3 #### 
-        if is_good_response(results): 
-            print("No boundary in it 2")
-            price_condition = f"price between {lower_value * 0.3} and {upper_value * 2.0}"
-            results = massive_execute_with_condition(
-                reg_cond= region_condition, 
-                price_cond= price_condition, 
-                time_cond = time_condition,
-                is_same_region= same_region,
-                table = ESTATE_TABLE, 
-                price_policy = True, 
-                time_policy = True, 
-                selected_multiple_region= selected_multiple_region,
-                num_of_asset = req_sample_num
-            )            
+@app.route('/api/mine', methods=['POST'])
+def mine_block():
+    """블록 채굴"""
+    try:
+        data = request.get_json()
+        miner_address = data.get('miner_address')
+        
+        if not miner_address:
+            return jsonify({
+                'success': False,
+                'error': 'Miner address is required'
+            }), 400
+        
+        # 블록 채굴
+        block = blockchain.mine_block(miner_address)
+        save_data()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'block': block,
+                'message': f'Block {block["index"]} mined successfully',
+                'transactions_processed': len(blockchain.pending_transactions) + 1  # +1 for reward
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-        #### Cursor4 #### 
-        if is_good_response(results): 
-            print("No boundary in it 3")
-            results = massive_execute_with_condition(
-                reg_cond= region_condition, 
-                price_cond= price_condition, 
-                time_cond = time_condition,
-                is_same_region= same_region,
-                table = ESTATE_TABLE, 
-                price_policy= False, 
-                time_policy = True, 
-                selected_multiple_region= selected_multiple_region,
-                num_of_asset = req_sample_num
-            )            
+@app.route('/api/blockchain', methods=['GET'])
+def get_blockchain():
+    """전체 블록체인 조회"""
+    try:
+        return jsonify({
+            'success': True,
+            'data': {
+                'chain': blockchain.chain,
+                'length': len(blockchain.chain),
+                'pending_transactions': len(blockchain.pending_transactions)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-        #### Final #### 
-        mydbConnection.close()
-    except Exception as err: 
-        print(err)
-        return [{"Error":err}]
-    return jsonify(results)
+@app.route('/api/blockchain/block/<int:index>', methods=['GET'])
+def get_block(index):
+    """특정 블록 조회"""
+    try:
+        if index < 1 or index > len(blockchain.chain):
+            return jsonify({
+                'success': False,
+                'error': 'Block not found'
+            }), 404
+        
+        block = blockchain.chain[index - 1]
+        return jsonify({
+            'success': True,
+            'data': {'block': block}
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/gameResult', methods=['POST'])
-def set_game_result():
-    result_dict = request.json
-    mydbConnection = db_connect()
-    cursor = mydbConnection.cursor()
-    sql = f"""
-    INSERT INTO {GAME_TABLE}
-    (asset1_address, asset1_aptname, asset1_housing, asset1_price, asset1_deposit, asset1_approval_date, 
-    asset1_gen_num, asset1_space, asset1_floor, asset1_subway, asset1_latitude, asset1_longitude, asset1_dealdate,
-    asset2_address, asset2_aptname, asset2_housing, asset2_price, asset2_deposit, asset2_approval_date, asset2_dealdate,
-    asset2_gen_num, asset2_space, asset2_floor, asset2_subway, asset2_latitude, asset2_longitude,
-    hope_place, age, workplace, wage, possession, fam_num, liquid_asset, 
-    game_player, game_win_asset, game_time_sec, game_play_time)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-    """
-    cursor.execute(sql, (
-            result_dict["asset1_address"], result_dict["asset1_aptname"], result_dict["asset1_housing"], 
-            result_dict["asset1_price"], result_dict["asset1_deposit"], result_dict["asset1_approval_date"], result_dict["asset1_gen_num"], 
-            result_dict["asset1_space"], result_dict["asset1_floor"], result_dict["asset1_subway"],
-            result_dict["asset1_latitude"], result_dict["asset1_longitude"], result_dict["asset1_dealdate"], 
-            result_dict["asset2_address"], result_dict["asset2_aptname"], result_dict["asset2_housing"],
-            result_dict["asset2_price"], result_dict["asset2_deposit"], result_dict["asset2_approval_date"], result_dict["asset2_gen_num"], 
-            result_dict["asset2_space"], result_dict["asset2_floor"], result_dict["asset2_subway"], 
-            result_dict["asset2_latitude"], result_dict["asset2_longitude"], result_dict["asset2_dealdate"],
-            result_dict["hope_place"], result_dict["age"], result_dict["workplace"], result_dict["wage"], 
-            result_dict["possession"], result_dict["fam_num"], result_dict["liquid_asset"],
-            result_dict["game_player"], result_dict["game_win_asset"], result_dict["game_time_sec"], result_dict["game_play_time"],
-            
-        ))     
-    results = cursor.fetchall()
-    mydbConnection.commit()
-    cursor.close()
-    mydbConnection.close()
-    return jsonify(results)
+@app.route('/api/pending-transactions', methods=['GET'])
+def get_pending_transactions():
+    """대기 중인 트랜잭션 조회"""
+    try:
+        pending = [tx.to_dict() for tx in blockchain.pending_transactions]
+        return jsonify({
+            'success': True,
+            'data': {
+                'pending_transactions': pending,
+                'count': len(pending)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """블록체인 통계"""
+    try:
+        total_utxos = len(blockchain.utxo_pool.utxos)
+        total_supply = sum(utxo.amount for utxo in blockchain.utxo_pool.utxos.values())
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'total_blocks': len(blockchain.chain),
+                'pending_transactions': len(blockchain.pending_transactions),
+                'total_utxos': total_utxos,
+                'total_supply': total_supply,
+                'registered_wallets': len(wallets)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """서버 상태 확인"""
+    return jsonify({
+        'success': True,
+        'message': 'Bitcoin server is running',
+        'blockchain_height': len(blockchain.chain)
+    })
 
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        'success': False,
+        'error': 'API endpoint not found'
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({
+        'success': False,
+        'error': 'Internal server error'
+    }), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # 환경 변수에서 포트 가져오기, 없으면 기본 포트 5000
-    print(f"Server is running on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # 서버 시작 시 데이터 로드
+    load_data()
+    
+    # Genesis 블록에 초기 UTXO 추가 (테스트용)
+    if len(blockchain.utxo_pool.utxos) == 0:
+        # 테스트용 초기 지갑 생성
+        genesis_wallet = Wallet()
+        wallets[genesis_wallet.get_address()] = genesis_wallet
+        
+        # Genesis UTXO 추가
+        genesis_utxo = UTXO(
+            tx_id="genesis",
+            output_index=0,
+            amount=1000.0,
+            address=genesis_wallet.get_address()
+        )
+        blockchain.utxo_pool.add_utxo(genesis_utxo)
+        save_data()
+        
+        print(f"Genesis wallet created: {genesis_wallet.get_address()}")
+    
+    print("🚀 Bitcoin server starting...")
+    print("📊 API endpoints:")
+    print("   GET  / (로그인 페이지)")
+    print("   GET  /join (회원가입 페이지)")
+    print("   GET  /dashboard (대시보드)")
+    print("   POST /api/wallet/create")
+    print("   GET  /api/wallet/<address>/balance")
+    print("   GET  /api/wallet/<address>/utxos")
+    print("   POST /api/transaction/create")
+    print("   POST /api/transaction/send")
+    print("   POST /api/mine")
+    print("   GET  /api/blockchain")
+    print("   GET  /api/pending-transactions")
+    print("   GET  /api/stats")
+    
+    app.run(debug=True, host='0.0.0.0', port=5000)
