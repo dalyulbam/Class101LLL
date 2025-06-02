@@ -1,4 +1,3 @@
-dashboard_html = """
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -205,12 +204,14 @@ dashboard_html = """
         <div class="header">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <h1>🪙 Bitcoin UTXO 블록체인</h1>
+                    <h1>🪙 나만의 코인을 만들어보자 🔥</h1>
                     <p>UTXO 기반 비트코인 구현 및 테스트</p>
                 </div>
                 <div style="text-align: right;">
                     <div class="user-info">
-                        <span id="currentUser">사용자</span>님 환영합니다!
+                        {% with this_user = session['user'] %}
+                            <span id="currentUser"> {{ this_user }}</span>님 환영합니다!
+                        {% endwith %}
                     </div>
                     <a href="/logout" class="logout-btn">
                         🚪 로그아웃
@@ -218,6 +219,14 @@ dashboard_html = """
                 </div>
             </div>
         </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         
         <div class="nav">
             <button class="nav-item active" onclick="showSection('dashboard')">대시보드</button>

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string, redirect, url_for, session, flash
+from flask import Flask, request, jsonify,render_template, render_template_string, redirect, url_for, session, flash
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
@@ -12,8 +12,19 @@ from bitcoin_utxo import (
     TransactionInput, TransactionOutput, UTXOPool
 )
 
+from datetime import datetime
+import base64
+from cryptography.fernet import Fernet
+import hashlib 
+
+
 app = Flask(__name__)
 CORS(app)
+### secret key 설정 ### 
+secret_key_env = os.environ.get('SECRET_KEY')
+if secret_key_env is None:
+    raise RuntimeError("SECRET_KEY environment variable is not set.")
+app.secret_key = secret_key_env
 
 # 전역 블록체인 인스턴스
 blockchain = Blockchain()
@@ -107,12 +118,12 @@ def login():
     if 'user' in session:
         return redirect(url_for('dashboard'))
     
-    return render_template_string("login.html")
+    return render_template("login.html")
 
 @app.route('/join')
 def join():
     """회원가입 페이지"""
-    return render_template_string("join.html")
+    return render_template("join.html")
 
 
 @app.route('/authenticate', methods=['POST'])
@@ -198,7 +209,7 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template_string("dashboard.html")
+    return render_template("dashboard.html")
 
 @app.route('/api/wallet/create', methods=['POST'])
 def create_wallet():

@@ -66,7 +66,7 @@ class Wallet:
         """타원 곡선 연산을 이용해 공개 키 생성"""
         sk = ecdsa.SigningKey.from_string(private_key, curve=ecdsa.SECP256k1)
         vk = sk.verifying_key
-        return b'\x04' + vk.to_string()
+        return b'\x04' + vk.to_string() 
 
     def _generate_address(self, public_key: bytes) -> str:
         """비트코인 주소 생성"""
