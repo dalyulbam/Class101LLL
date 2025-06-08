@@ -478,11 +478,19 @@ if __name__ == '__main__':
     load_data()
     
     # Genesis 블록에 초기 UTXO 추가 (테스트용)
-    if len(blockchain.utxo_pool.utxos) == 0:
+    if len(blockchain.utxo_pool.utxos) == 0 and len(blockchain.chain) == 0:
         # 테스트용 초기 지갑 생성
         genesis_wallet = Wallet()
         wallets[genesis_wallet.get_address()] = genesis_wallet
-        
+        # Genesis 블록 생성
+        genesis_block = blockchain._create_block(
+            data="genesis block",
+            proof=1,
+            previous_hash="0",
+            index=1
+        )
+        blockchain.chain.append(genesis_block)
+
         # Genesis UTXO 추가
         genesis_utxo = UTXO(
             tx_id="genesis",
