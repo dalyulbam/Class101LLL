@@ -491,14 +491,6 @@ if __name__ == '__main__':
         )
         blockchain.chain.append(genesis_block)
 
-        # Genesis UTXO 추가
-        genesis_utxo = UTXO(
-            tx_id="genesis",
-            output_index=0,
-            amount=1000.0,
-            address=genesis_wallet.get_address()
-        )
-        blockchain.utxo_pool.add_utxo(genesis_utxo)
         save_data()
         
         print(f"Genesis wallet created: {genesis_wallet.get_address()}")
