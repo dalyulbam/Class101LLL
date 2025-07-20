@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블랙잭 DApp</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎰 블랙잭 게임 DApp</h1>
+            <div id="connectionStatus" class="status">연결되지 않음</div>
+        </header>
+
+        <!-- 지갑 연결 섹션 -->
+        <section class="wallet-section">
+            <h2>지갑 연결</h2>
+            
+            <!-- MetaMask 연결 -->
+            <div class="connection-method">
+                <h3>방법 1: MetaMask</h3>
+                <button id="connectWallet" class="button">MetaMask 연결</button>
+            </div>
+
+            <!-- Private Key 연결 -->
+            <div class="connection-method">
+                <h3>방법 2: Private Key 직접 입력</h3>
+                <div class="input-group">
+                    <label for="rpcUrl">RPC URL:</label>
+                    <input type="text" id="rpcUrl" value="http://127.0.0.1:8545" class="input-field" placeholder="http://127.0.0.1:8545">
+                </div>
+                <div class="input-group">
+                    <label for="privateKeyInput">Private Key:</label>
+                    <input type="password" id="privateKeyInput" class="input-field" placeholder="0x1234567890abcdef...">
+                    <small>⚠️ 테스트 계정만 사용하세요!</small>
+                </div>
+                <button id="connectPrivateKey" class="button">Private Key 연결</button>
+            </div>
+
+            <!-- Hardhat 테스트 계정 정보 -->
+            <div class="test-accounts">
+                <h3>📋 Hardhat 테스트 계정들</h3>
+                <details>
+                    <summary>테스트 계정 목록 보기</summary>
+                    <div class="account-list">
+                        <div class="account-item">
+                            <strong>Account #0:</strong><br>
+                            주소: <code>0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266</code><br>
+                            Private Key: <code>0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80</code>
+                        </div>
+                        <div class="account-item">
+                            <strong>Account #1:</strong><br>
+                            주소: <code>0x70997970C51812dc3A010C7d01b50e0d17dc79C8</code><br>
+                            Private Key: <code>0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d</code>
+                        </div>
+                        <div class="account-item">
+                            <strong>Account #2:</strong><br>
+                            주소: <code>0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC</code><br>
+                            Private Key: <code>0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a</code>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div id="walletInfo" class="info-box" style="display: none;">
+                <p><strong>계정:</strong> <span id="accountAddress"></span></p>
+                <p><strong>잔고:</strong> <span id="accountBalance"></span> ETH</p>
+            </div>
+        </section>
+
+        <!-- 컨트랙트 정보 섹션 -->
+        <section class="contract-section">
+            <h2>컨트랙트 정보</h2>
+            <div class="input-group">
+                <label for="contractAddress">컨트랙트 주소:</label>
+                <input type="text" id="contractAddress" placeholder="0x..." class="input-field">
+                <button id="loadContract" class="button">컨트랙트 로드</button>
+            </div>
+            <div id="contractInfo" class="info-box" style="display: none;">
+                <p><strong>컨트랙트 잔고:</strong> <span id="contractBalance"></span> ETH</p>
+                <p><strong>최소 베팅:</strong> <span id="minBet"></span> ETH</p>
+                <p><strong>최대 베팅:</strong> <span id="maxBet"></span> ETH</p>
+            </div>
+        </section>
+
+        <!-- 게임 시작 섹션 -->
+        <section class="game-start-section">
+            <h2>게임 시작</h2>
+            <div class="input-group">
+                <label for="betAmount">베팅 금액 (ETH):</label>
+                <input type="number" id="betAmount" placeholder="0.01" step="0.001" min="0.001" class="input-field">
+                <button id="startGame" class="button" disabled>게임 시작</button>
+            </div>
+        </section>
+
+        <!-- 게임 상태 섹션 -->
+        <section class="game-state-section" style="display: none;">
+            <h2>게임 진행</h2>
+            
+            <div class="game-info">
+                <p><strong>게임 ID:</strong> <span id="gameId"></span></p>
+                <p><strong>베팅 금액:</strong> <span id="currentBet"></span> ETH</p>
+                <p><strong>게임 상태:</strong> <span id="gameStatus"></span></p>
+            </div>
+
+            <div class="hands">
+                <div class="player-hand">
+                    <h3>내 카드 (값: <span id="playerValue">0</span>)</h3>
+                    <div id="playerCards" class="cards"></div>
+                </div>
+
+                <div class="dealer-hand">
+                    <h3>딜러 카드 (값: <span id="dealerValue">0</span>)</h3>
+                    <div id="dealerCards" class="cards"></div>
+                </div>
+            </div>
+
+            <div class="game-actions">
+                <button id="hitButton" class="button" disabled>Hit (카드 받기)</button>
+                <button id="standButton" class="button" disabled>Stand (멈추기)</button>
+                <button id="newGameButton" class="button" style="display: none;">새 게임</button>
+            </div>
+
+            <div id="gameResult" class="result" style="display: none;"></div>
+        </section>
+
+        <!-- 로그 섹션 -->
+        <section class="log-section">
+            <h2>게임 로그</h2>
+            <div id="gameLog" class="log-box"></div>
+            <button id="clearLog" class="button secondary">로그 지우기</button>
+        </section>
+
+        <!-- Owner 전용 섹션 -->
+        <section class="owner-section" style="display: none;">
+            <h2>Owner 전용 기능</h2>
+            <div class="input-group">
+                <label for="depositAmount">입금 금액 (ETH):</label>
+                <input type="number" id="depositAmount" placeholder="1.0" step="0.1" class="input-field">
+                <button id="depositButton" class="button">컨트랙트에 입금</button>
+            </div>
+            <div class="input-group">
+                <label for="withdrawAmount">출금 금액 (ETH):</label>
+                <input type="number" id="withdrawAmount" placeholder="1.0" step="0.1" class="input-field">
+                <button id="withdrawButton" class="button">컨트랙트에서 출금</button>
+            </div>
+        </section>
+
+        <!-- 트랜잭션 상태 -->
+        <div id="transactionStatus" class="transaction-status" style="display: none;">
+            <p id="transactionMessage">트랜잭션 처리 중...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

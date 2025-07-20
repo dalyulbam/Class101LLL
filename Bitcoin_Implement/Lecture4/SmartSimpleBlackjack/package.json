@@ -1,0 +1,35 @@
+{
+  "name": "blackjack-dapp",
+  "version": "1.0.0",
+  "description": "블랙잭 게임 탈중앙화 애플리케이션",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "node": "npx hardhat node",
+    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
+    "play": "npx hardhat run scripts/play-game.js --network localhost",
+    "serve": "python -m http.server 8000 --directory frontend",
+    "serve:node": "npx http-server frontend -p 8000 -o"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "dapp",
+    "blackjack",
+    "solidity"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.26.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1"
+  },
+  "directories": {
+    "test": "test"
+  }
+}

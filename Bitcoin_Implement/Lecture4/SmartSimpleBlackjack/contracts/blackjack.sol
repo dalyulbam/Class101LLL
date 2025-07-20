@@ -145,7 +145,7 @@ contract BlackjackGame {
     function _generateRandomCard(uint256 gameId, uint256 nonce) internal view returns (uint8) {
         uint256 randomHash = uint256(keccak256(abi.encodePacked(
             block.timestamp,
-            block.difficulty,
+            block.prevrandao,
             gameId,
             nonce,
             msg.sender

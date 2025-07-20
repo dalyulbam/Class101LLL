@@ -1,0 +1,17 @@
+1. 프로젝트 설정
+mkdir blackjack-dapp && cd blackjack-dapp
+npm init -y
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
+npm install dotenv
+
+
+2. 컨트랙트 배포 
+npx hardhat compile
+npx hardhat node           # 다른 커맨드 프롬프트 
+npx hardhat run scripts/deploy.js --network localhost # 로컬에서 배포 
+
+
+3. 프론트엔드 실행
+cd frontend
+python -m http.server 8000
+npx http-server . -p 8000
